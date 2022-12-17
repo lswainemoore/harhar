@@ -1,0 +1,14 @@
+{
+"manifest_version": 3,
+  "name": "Grabber",
+  "description": "Grab blah blah",
+  "version": "1.0",
+  "devtools_page": "devtools.html",
+  "permissions": [
+    "activeTab",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ]
+}
