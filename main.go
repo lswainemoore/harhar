@@ -161,15 +161,15 @@ func main() {
 		if len(splittened) >= 2 {
 			url = strings.Split(req.URL.RequestURI(), "/?url=")[1]
 		} else {
-			// TODO return an error
 			log.Println("ill-formatted url: " + req.URL.RequestURI())
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		match, found := matchRequest(harMap, url)
 		if !found {
-			// TODO return an error
 			log.Println("No match found for: " + url)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		log.Println("Matched: " + match.Request.URL)
