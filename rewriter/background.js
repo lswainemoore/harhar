@@ -29,12 +29,12 @@ chrome.action.onClicked.addListener(async (tab) => {
 
   const tabIds = Object.entries(tabStates).filter(([tabId, state]) => state === 'ON').map(([tabId, state]) => parseInt(tabId))
 
-  await chrome.declarativeNetRequest.updateSessionRules({
+  chrome.declarativeNetRequest.updateSessionRules({
     removeRuleIds: [1, 2, 3],
   })
 
   if (tabIds.length > 0) {
-    await chrome.declarativeNetRequest.updateSessionRules({
+    chrome.declarativeNetRequest.updateSessionRules({
       addRules: [
         {
           "id": 1,
@@ -68,6 +68,7 @@ chrome.action.onClicked.addListener(async (tab) => {
             "type": "allow"
           }
         },
+        // we want to rewrite relative requests
         {
           "id": 3,
           "priority": 1,
