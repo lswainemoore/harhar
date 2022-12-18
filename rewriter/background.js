@@ -29,32 +29,73 @@ chrome.action.onClicked.addListener(async (tab) => {
 
   const tabIds = Object.entries(tabStates).filter(([tabId, state]) => state === 'ON').map(([tabId, state]) => parseInt(tabId))
 
-  chrome.declarativeNetRequest.updateSessionRules({
-    removeRuleIds: [1],
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [1, 2, 3],
   })
 
   if (tabIds.length > 0) {
-    chrome.declarativeNetRequest.updateSessionRules({
-      addRules: [{
-        "id": 1,
-        "priority": 1,
-        "condition": {
-          "regexFilter": "^(.*)$",
-          "excludedRequestDomains": [
-            "localhost"
-          ],
-          "tabIds": tabIds,
+    await chrome.declarativeNetRequest.updateSessionRules({
+      addRules: [
+        {
+          "id": 1,
+          "priority": 3,
+          "condition": {
+            "regexFilter": "^(https?://.*)$",
+            "excludedRequestDomains": [
+              "localhost"
+            ],
+            "tabIds": tabIds,
+          },
+          "action": {
+            "type": "redirect",
+            "redirect": {
+              "regexSubstitution": "http://localhost:8000/?rewritten=true&url=\\1"
+            }
+          }
         },
-        "action": {
-          "type": "redirect",
-          "redirect": {
-            "regexSubstitution": "http://localhost:8000/?url=\\1"
+        // prevents infinite redirects
+        {
+          "id": 2,
+          "priority": 2,
+          "condition": {
+            "urlFilter": "*?rewritten=true&url=*",
+            "requestDomains": [
+              "localhost"
+            ],
+            "tabIds": tabIds,
+          },
+          "action": {
+            "type": "allow"
+          }
+        },
+        {
+          "id": 3,
+          "priority": 1,
+          "condition": {
+            "regexFilter": "^http://localhost:8000/(.*)$",
+            "requestDomains": [
+              "localhost"
+            ],
+            "tabIds": tabIds,
+          },
+          "action": {
+            "type": "redirect",
+            "redirect": {
+              "regexSubstitution": "http://localhost:8000/?rewritten=true&url=REPLACEMEWITHDOMAIN\\1"
+            }
           }
         }
-      }],
+      ],
     })
-    return
   }
+  // chrome.declarativeNetRequest.testMatchOutcome(
+  //   request: {
+  //     url: 'https://www.google.com',
+  //     method: 'GET',
+  //   },
+  //   callback:,
+  // )
+  return
 
 
   // old: manifest v2

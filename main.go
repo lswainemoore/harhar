@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	// "strconv"
 	"strings"
@@ -134,6 +136,10 @@ func main() {
 	json.Unmarshal(byteValue, &metaLog)
 	var harLog = metaLog.HARLog
 
+	parsedBase, _ := url.Parse(harLog.Pages[0].Title)
+	baseUrl := fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
+	log.Println("Base URL: " + baseUrl)	
+
 	var harMap = make(map[string]Entry)
 
 	for i := 0; i < len(harLog.Entries); i++ {
@@ -156,14 +162,26 @@ func main() {
 		// `url := req.URL.Query().Get("url")` but my extension doesn't
 		// properly URL encode the query param, so subsequent params get chopped
 		// when we access it like that.
-		splittened := strings.Split(req.URL.RequestURI(), "/?url=")
+		splittened := strings.Split(req.URL.RequestURI(), "/?rewritten=true&url=")
 		var url string
 		if len(splittened) >= 2 {
-			url = strings.Split(req.URL.RequestURI(), "/?url=")[1]
+			url = splittened[1]
 		} else {
 			log.Println("ill-formatted url: " + req.URL.RequestURI())
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+
+		// more ugliness: when the url is relative, we want to replace our placeholder
+		// with the root domain
+		if strings.HasPrefix(url, "REPLACEMEWITHDOMAIN") {
+			url = strings.Replace(url, "REPLACEMEWITHDOMAIN", "", 1)
+			if strings.HasPrefix(url, "/") {
+				url = baseUrl + url
+			} else {
+				url = baseUrl + "/" + url
+			}
+			log.Println("url normalized to: " + url) 
 		}
 
 		match, found := matchRequest(harMap, url)
