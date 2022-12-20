@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"os"
 	// "strconv"
-	"strings"
+	// "strings"
 )
 
 type MetaLog struct {
@@ -154,43 +154,56 @@ func main() {
 	}
 
 	// see: https://www.wolfe.id.au/2020/03/10/starting-a-go-project/
-
 	helloHandler := func(w http.ResponseWriter, req *http.Request) {
-		log.Println("URL: " + req.URL.RequestURI())
+		// requestUrl := req.URL.Query().Get("url2")
+		// log.Println("full URL: " + req.URL.RequestURI())
+		// log.Println("searching URL: " + requestUrl)
 
-		// TODO this is quite ugly. we'd really rather use
-		// `url := req.URL.Query().Get("url")` but my extension doesn't
-		// properly URL encode the query param, so subsequent params get chopped
-		// when we access it like that.
-		splittened := strings.Split(req.URL.RequestURI(), "/?rewritten=true&url=")
-		var url string
-		if len(splittened) >= 2 {
-			url = splittened[1]
-		} else {
-			log.Println("ill-formatted url: " + req.URL.RequestURI())
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		uri := req.URL.RequestURI()
+		origin := req.Header.Get("old-origin")
+
+		if (origin == "WEDUNNO") {
+			origin = baseUrl
 		}
 
-		// more ugliness: when the url is relative, we want to replace our placeholder
-		// with the root domain
-		if strings.HasPrefix(url, "REPLACEMEWITHDOMAIN") {
-			url = strings.Replace(url, "REPLACEMEWITHDOMAIN", "", 1)
-			if strings.HasPrefix(url, "/") {
-				url = baseUrl + url
-			} else {
-				url = baseUrl + "/" + url
-			}
-			log.Println("url normalized to: " + url) 
-		}
+		fullUrl := origin + uri
 
-		match, found := matchRequest(harMap, url)
+		// url := req.URL.RequestURI().Query().Get("url")	
+
+		// // TODO this is quite ugly. we'd really rather use
+		// // `url := req.URL.Query().Get("url")` but my extension doesn't
+		// // properly URL encode the query param, so subsequent params get chopped
+		// // when we access it like that.
+		// splittened := strings.Split(req.URL.RequestURI(), "/?rewritten=true&url=")
+		// var url string
+		// if len(splittened) >= 2 {
+		// 	url = splittened[1]
+		// } else {
+		// 	log.Println("ill-formatted url: " + req.URL.RequestURI())
+		// 	w.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
+
+		// // more ugliness: when the url is relative, we want to replace our placeholder
+		// // with the root domain
+		// if strings.HasPrefix(url, "REPLACEMEWITHDOMAIN") {
+		// 	url = strings.Replace(url, "REPLACEMEWITHDOMAIN", "", 1)
+		// 	if strings.HasPrefix(url, "/") {
+		// 		url = baseUrl + url
+		// 	} else {
+		// 		url = baseUrl + "/" + url
+		// 	}
+		// 	log.Println("url normalized to: " + url) 
+		// }
+
+		match, found := matchRequest(harMap, fullUrl)
 		if !found {
-			log.Println("No match found for: " + url)
+			log.Println("No match found for: " + fullUrl)
+			fmt.Printf("%+v\n", req)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		log.Println("Matched: " + match.Request.URL)
+		// log.Println("Matched: " + match.Request.URL)
 
 		for i := 0; i < len(match.Response.Headers); i++ {
 			if contains([]string{"accept-ranges", "content-type", "vary"}, match.Response.Headers[i].Name) {
