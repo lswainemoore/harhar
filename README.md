@@ -8,6 +8,7 @@ TODO
 x extension for saving .har files (explore side)
 - make the extension url-encode full url param so we can parse it properly in request
 - improved matching
+  - e.g. http vs https
 - content-length
 - POST/etc.
 x fonts not working well.
@@ -18,4 +19,5 @@ x fonts not working well.
 - test/fix for firefox (longer maintennance of relevant v2 APIs...)
 - i think this should be converted away from a popup script, unfortunately
   - since it prevents actions when popup closes. stuff should probably live in background script instead, though then have to sort out the toggling action. maybe it should be a devtools script, because that persists a little better... 
+- normalize urls (mostly query param issues) on ingestion
 - so much more....

@@ -164,12 +164,15 @@ func main() {
 		// params.Del("rewritten_from")
 		// req.URL.Query().Del("rewritten_from")
 		// req.URL.RawQuery = params.Encode()
+		// uri := req.URL.RequestURI()
 
 		// this is pretty gnarly. it would be much better to do it like above,
 		// but unfortunately our HAR archives are not necessarily going to have
 		// parameters url-encoded, and since the above re-writes and thus encodes them,
 		// we'll have some misses.
-		// TODO solution: canonicalize URLs when reading archive, and here.
+		// actually, along the same lines, there's a different problem, which is the
+		// ordering of params may not be the same when we re-encoded.
+		// TODO solution: normalize URLs when reading archive, and here.
 		splittened := strings.Split(req.URL.RequestURI(), "rewritten_from=")
 		// remove the last character, which is either a `&` or a `?`
 		// (depends whether there were other params)

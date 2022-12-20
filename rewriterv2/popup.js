@@ -25,15 +25,30 @@ const rewriterRequest = (details) => {
     rewrittenFrom = origin;
   }
 
-  const newUrl = new URL(`http://${LOCALHOST}/`);
-  newUrl.pathname = pathname;
-  newUrl.search = search;
-  newUrl.searchParams.set('rewritten_from', rewrittenFrom);
+  // const newUrl = new URL(`http://${LOCALHOST}/`);
+  // newUrl.pathname = pathname;
+  // newUrl.search = search;
+  // url.searchParams.set('rewritten_from', rewrittenFrom);
 
-  console.log('redirecting to: ', newUrl.toString());
+  // sucks that we need to do this here (it'd be nicer to do above)
+  // but we have the same problem we have on backend around this re-encoding 
+  // stuff that wasn't url-encoded in the first place (happens when you mess w search params)
+  // interestingly, this issue we see on backend around changing of param order doesn't
+  // seem to happen here (implies there's some sorting to the searchParams)
+  // TODO same solution as backend: normalize URLs
+  url.host = LOCALHOST;
+  url.protocol = 'http';
+  // what we want here depends on whether the url already has a query string
+  var sep = '?';
+  if (url.search) {
+    sep = '&';
+  }
+  // careful! we do want to url-encode our own parameter, just in case.
+  url.search = url.search + sep + 'rewritten_from=' + encodeURIComponent(rewrittenFrom);
+  console.log('redirecting to: ', url.toString());
   
   return {
-    redirectUrl: newUrl.toString(),
+    redirectUrl: url.toString(),
   }
 }
 
