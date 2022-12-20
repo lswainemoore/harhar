@@ -16,4 +16,6 @@ x fonts not working well.
   - perhaps this ought to save the har on backend as we click around
 - reduce dependence on "rewritten_from" sep string
 - test/fix for firefox (longer maintennance of relevant v2 APIs...)
+- i think this should be converted away from a popup script, unfortunately
+  - since it prevents actions when popup closes. stuff should probably live in background script instead, though then have to sort out the toggling action. maybe it should be a devtools script, because that persists a little better... 
 - so much more....
