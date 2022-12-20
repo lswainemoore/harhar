@@ -10,8 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	// "strconv"
-	// "strings"
+	"strings"
 )
 
 type MetaLog struct {
@@ -138,7 +137,7 @@ func main() {
 
 	parsedBase, _ := url.Parse(harLog.Pages[0].Title)
 	baseUrl := fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
-	log.Println("Base URL: " + baseUrl)	
+	log.Println("Base URL: " + baseUrl)
 
 	var harMap = make(map[string]Entry)
 
@@ -155,46 +154,43 @@ func main() {
 
 	// see: https://www.wolfe.id.au/2020/03/10/starting-a-go-project/
 	helloHandler := func(w http.ResponseWriter, req *http.Request) {
-		// requestUrl := req.URL.Query().Get("url2")
-		// log.Println("full URL: " + req.URL.RequestURI())
-		// log.Println("searching URL: " + requestUrl)
+		log.Println("received URL: " + req.URL.RequestURI())
 
-		uri := req.URL.RequestURI()
-		origin := req.Header.Get("old-origin")
+		origin := req.URL.Query().Get("rewritten_from")
 
-		if (origin == "WEDUNNO") {
-			origin = baseUrl
+		// // little unpleasant in go to remove a query param
+		// // see: https://johnweldon.com/blog/quick-tip-remove-query-param-from-url-in-go/
+		// params := req.URL.Query()
+		// params.Del("rewritten_from")
+		// req.URL.Query().Del("rewritten_from")
+		// req.URL.RawQuery = params.Encode()
+
+		// this is pretty gnarly. it would be much better to do it like above,
+		// but unfortunately our HAR archives are not necessarily going to have
+		// parameters url-encoded, and since the above re-writes and thus encodes them,
+		// we'll have some misses.
+		// TODO solution: canonicalize URLs when reading archive, and here.
+		splittened := strings.Split(req.URL.RequestURI(), "rewritten_from=")
+		// remove the last character, which is either a `&` or a `?`
+		// (depends whether there were other params)
+		uri := splittened[0][:len(splittened[0])-1]
+
+		if origin == "WEDUNNO" {
+			// generally, this will have a referer header, which has a origin attached to it
+			referer := req.Header.Get("Referer")
+			if referer != "" {
+				refererUrl, _ := url.Parse(referer)
+				origin = refererUrl.Query().Get("rewritten_from")
+			} else {
+				// when it doesn't, we'll use our main page's one from HAR
+				// (TODO this will change if we support multiple pages)
+				origin = baseUrl
+			}
 		}
 
 		fullUrl := origin + uri
 
-		// url := req.URL.RequestURI().Query().Get("url")	
-
-		// // TODO this is quite ugly. we'd really rather use
-		// // `url := req.URL.Query().Get("url")` but my extension doesn't
-		// // properly URL encode the query param, so subsequent params get chopped
-		// // when we access it like that.
-		// splittened := strings.Split(req.URL.RequestURI(), "/?rewritten=true&url=")
-		// var url string
-		// if len(splittened) >= 2 {
-		// 	url = splittened[1]
-		// } else {
-		// 	log.Println("ill-formatted url: " + req.URL.RequestURI())
-		// 	w.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
-
-		// // more ugliness: when the url is relative, we want to replace our placeholder
-		// // with the root domain
-		// if strings.HasPrefix(url, "REPLACEMEWITHDOMAIN") {
-		// 	url = strings.Replace(url, "REPLACEMEWITHDOMAIN", "", 1)
-		// 	if strings.HasPrefix(url, "/") {
-		// 		url = baseUrl + url
-		// 	} else {
-		// 		url = baseUrl + "/" + url
-		// 	}
-		// 	log.Println("url normalized to: " + url) 
-		// }
+		log.Println("seeking url: " + fullUrl)
 
 		match, found := matchRequest(harMap, fullUrl)
 		if !found {
@@ -203,7 +199,7 @@ func main() {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		// log.Println("Matched: " + match.Request.URL)
+		log.Println("Matched: " + match.Request.URL)
 
 		for i := 0; i < len(match.Response.Headers); i++ {
 			if contains([]string{"accept-ranges", "content-type", "vary"}, match.Response.Headers[i].Name) {
