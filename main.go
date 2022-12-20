@@ -149,6 +149,14 @@ func main() {
 	matchRequest := func(harMap map[string]Entry, url string) (Entry, bool) {
 		// basic method: match only on full strings
 		val, found := harMap[url]
+
+		if !found {
+			// try upgrading to https
+			if strings.HasPrefix(url, "http://") {
+				url = strings.Replace(url, "http://", "https://", 1)
+				val, found = harMap[url]
+			}
+		}
 		return val, found
 	}
 

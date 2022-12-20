@@ -8,7 +8,7 @@ TODO
 x extension for saving .har files (explore side)
 - make the extension url-encode full url param so we can parse it properly in request
 - improved matching
-  - e.g. http vs https
+  x http vs https
 - content-length
 - POST/etc.
 x fonts not working well.
