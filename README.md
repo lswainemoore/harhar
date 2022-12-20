@@ -20,4 +20,8 @@ x fonts not working well.
 - i think this should be converted away from a popup script, unfortunately
   - since it prevents actions when popup closes. stuff should probably live in background script instead, though then have to sort out the toggling action. maybe it should be a devtools script, because that persists a little better... 
 - normalize urls (mostly query param issues) on ingestion
+- some things i'm not sure what to do about:
+  - sometimes scripts (particularly analytics ones) attach stuff to the URIs they request randomly or using time, or something else computed in js. this means we don't recognize these. maybe the solution here is just to be lax about end of stuff, or use a heuristic or something
+  - sometimes a script will do something that depends on it using https (e.g. one of the tracking scripts does some funky stuff with an SSL subdomain [here](https://static.www.calottery.com/-/media/Base-Themes/Main-Theme/scripts/tracking.js?rev=dc6dddae1bca404db5fb59c0fe175fbf)). should we be https when running? what if another script needs us to be http??
+  - in both of above cases, i'm not really worried about the behavior too much from what i've seen, since it's pretty much just affecting analytics scripts. but if it were to not...the first case in particular seems basically impossible to solve.
 - so much more....
