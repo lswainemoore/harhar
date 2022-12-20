@@ -1,0 +1,18 @@
+{
+    // fuck chrome for deprecating webRequestBlocking
+    "manifest_version": 2,
+    "name": "Rewriter v2",
+    "description": "Rewrite blah v2",
+    "version": "1.0",
+    "permissions": [
+      "webRequest",
+      "webRequestBlocking",
+      "tabs",
+      "http://*/*",
+      "https://*/*"
+    ],
+    "browser_action": {
+      // "default_icon": "icon.png",
+      "default_popup": "popup.html"
+    }
+}
