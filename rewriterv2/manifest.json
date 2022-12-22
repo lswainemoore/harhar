@@ -11,8 +11,9 @@
       "http://*/*",
       "https://*/*"
     ],
-    "browser_action": {
-      // "default_icon": "icon.png",
-      "default_popup": "popup.html"
-    }
+    // "browser_action": {
+    //   // "default_icon": "icon.png",
+    //   "default_popup": "popup.html"
+    // }
+    "devtools_page": "devtools.html"
 }
