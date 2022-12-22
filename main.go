@@ -192,6 +192,13 @@ func main() {
 			if referer != "" {
 				refererUrl, _ := url.Parse(referer)
 				origin = refererUrl.Query().Get("rewritten_from")
+
+				// log.Println("using referer to determine origin: " + origin)
+				// // if we still dunno, do as below
+				// if origin == "WEDUNNO" {
+				// 	origin = baseUrl
+				// }
+				
 			} else {
 				// when it doesn't, we'll use our main page's one from HAR
 				// (TODO this will change if we support multiple pages)
