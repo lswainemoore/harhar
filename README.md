@@ -43,4 +43,5 @@ x fonts not working well.
   - sometimes a script will do something that depends on it using https (e.g. one of the tracking scripts does some funky stuff with an SSL subdomain [here](https://static.www.calottery.com/-/media/Base-Themes/Main-Theme/scripts/tracking.js?rev=dc6dddae1bca404db5fb59c0fe175fbf)). should we be https when running? what if another script needs us to be http??
   - in both of above cases, i'm not really worried about the behavior too much from what i've seen, since it's pretty much just affecting analytics scripts. but if it were to not...the first case in particular seems basically impossible to solve.
 - make grabber work without checking "preserve log"...right now basically has no function over just hitting download all in network tab.
+- note: when just doing the "preserve log" ... if you don't click a response before navigating page away, when you download whole HAR log, it won't be able to get content for previous pages. which is pretty much the same thing as i experienced when downloading the log manually. think this means we need to listen to every request after all :/
 - so much more....
