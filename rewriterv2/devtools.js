@@ -84,8 +84,16 @@ chrome.devtools.panels.create(
     panel.onShown.addListener(function (panelWindow) {
       // seems to be important to add listener here:
       // see: https://stackoverflow.com/questions/11624307/how-to-modify-content-under-a-devtools-panel-in-a-chrome-extension
-      panelWindow.document.querySelector('#start-rewriting').addEventListener('click', startRewriting);
-      panelWindow.document.querySelector('#stop-rewriting').addEventListener('click', stopRewriting);
+      panelWindow.document.querySelector('#start').addEventListener('click', (event) => {
+        event.target.disabled = true;
+        panelWindow.document.querySelector('#stop').disabled = false;
+        startRewriting()
+      });
+      panelWindow.document.querySelector('#stop').addEventListener('click', (event) => {
+        event.target.disabled = true;
+        panelWindow.document.querySelector('#start').disabled = false;  
+        stopRewriting();
+      });
     });
   }
 );
