@@ -48,9 +48,9 @@ const saveRequest = (request) => {
       harHeaders['version'] = har.version;
       harHeaders['browser'] = har.creator;
     }
-  )
+  );
 
-  // console.log('saving request: ', request)
+  console.log('saving request for: ', request.request.url, request)
   entries.push(request);
 
   // boy, what a pain that getContent doesn't return a promise...
@@ -61,19 +61,44 @@ const saveRequest = (request) => {
     promiseReject = reject;
   });
 
-  request.getContent(
-    function (content, encoding) {
-      try {
-        request.response.content.text = content;
-        if (encoding) {
-          request.response.content.encoding = encoding;
-        }
-        promiseResolve();
-      } catch (e) {
-        promiseReject(e);
+  if (request._fromCache) {
+    // TODO this is a pretty slow way to do things, since it involves requesting cache
+    // a bunch of times over. probably could use some internal cache-ing.
+    // also need to test the "_fromCache" applies to non-chrome. an alternative would be
+    // to see when there's empty content, and then try getting resources, but that is weird
+    // if content is truly empty.
+    chrome.devtools.inspectedWindow.getResources(resources => {
+      const resource = resources.find(resource => resource.url === request.request.url);
+      if (resource) {
+        resource.getContent((content, encoding) => {
+          request.response.content.text = content;
+          if (encoding) {
+            request.response.content.encoding = encoding;
+          }
+          promiseResolve();
+        });
+      } else {
+        console.log('could not find content for cached resource: ', request.request.url)
+        promiseReject();
       }
-    }
-  )
+    })
+  }
+  else {
+    request.getContent(
+      function (content, encoding) {
+        try {
+          request.response.content.text = content;
+          if (encoding) {
+            request.response.content.encoding = encoding;
+          }
+          promiseResolve();
+        } catch (e) {
+          console.log('error getting content for non-cached resource: ', request.request.url, e)
+          promiseReject(e);
+        }
+      }
+    )
+  }
   request.promise = promise;
 };
 
@@ -97,7 +122,7 @@ const downloadHar = () => {
     }
 
     var blob = new Blob(
-      [JSON.stringify(fullHar)],
+      [JSON.stringify(fullHar, null, 2)],
       {
         // doing this allows up to specify the file extension ourselves
         // see: https://stackoverflow.com/a/63046720
@@ -107,7 +132,7 @@ const downloadHar = () => {
     var url = URL.createObjectURL(blob);
     chrome.downloads.download({
       url: url,
-      filename: "har.har"
+      filename: "myhar.har"
     });
   });
   // chrome.devtools.network.getHAR(
