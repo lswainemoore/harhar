@@ -147,6 +147,7 @@ func main() {
 	}
 
 	var harMap map[string]Entry
+	var harLog HARLog
 
 	loadHar := func(filename string) map[string]Entry {
 		var harMap = make(map[string]Entry)
@@ -157,11 +158,7 @@ func main() {
 
 		var metaLog MetaLog
 		json.Unmarshal(byteValue, &metaLog)
-		var harLog = metaLog.HARLog
-
-		parsedBase, _ := url.Parse(harLog.Pages[0].Title)
-		baseUrl := fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
-		log.Println("Base URL: " + baseUrl)
+		harLog = metaLog.HARLog
 
 		for i := 0; i < len(harLog.Entries); i++ {
 			log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
@@ -220,6 +217,13 @@ func main() {
 		// ordering of params may not be the same when we re-encoded.
 		// TODO solution: normalize URLs when reading archive, and here.
 		splittened := strings.Split(req.URL.RequestURI(), "rewritten_from=")
+
+		if len(splittened) == 1 {
+			log.Println("No rewritten_from found in uri: " + req.URL.RequestURI())
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		// remove the last character, which is either a `&` or a `?`
 		// (depends whether there were other params)
 		uri := splittened[0][:len(splittened[0])-1]
@@ -233,13 +237,21 @@ func main() {
 
 				// redirect with a new rewritten_from with our determined origin
 				// (this is important so that future requests can figure out replacement
-				// for WEDUNNO in the same way we did here)
-				http.Redirect(w, req, uri + string(splittened[0][len(splittened[0])-1]) + "rewritten_from=" + origin, http.StatusMovedPermanently)
-				return
-			} else {
+				// for WEDUNNO in the same way we did here)	
+				if origin != "" && origin != "WEDUNNO" {
+					http.Redirect(w, req, uri + string(splittened[0][len(splittened[0])-1]) + "rewritten_from=" + origin, http.StatusMovedPermanently)
+					return
+				} else {
+					log.Println("No origin found in referer: " + referer)
+				}
+			} 
+			
+			// if we still don't have an origin, we'll use the base URL from the HAR
+			if origin == "WEDUNNO" || origin == "" {
 				// when it doesn't, we'll use our main page's one from HAR
-				// (TODO this will change if we support multiple pages)
-				// origin = baseUrl
+				// (TODO this may be iffy if we support multiple pages)
+				parsedBase, _ := url.Parse(harLog.Pages[0].Title)
+				origin = fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
 			}
 		}
 
