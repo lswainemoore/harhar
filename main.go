@@ -152,7 +152,7 @@ func main() {
 		var harMap = make(map[string]Entry)
 
 		// see: https://tutorialedge.net/golang/parsing-json-with-golang/
-		jsonFile, _ := os.Open(filename)
+		jsonFile, _ := os.Open("hars/" + filename)
 		byteValue, _ := ioutil.ReadAll(jsonFile)
 
 		var metaLog MetaLog
@@ -170,7 +170,7 @@ func main() {
 		return harMap
 	}
 
-	harMap = loadHar("myhar.har")
+	// harMap = loadHar("archive.har")
 	
 	loadHARHandler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -257,10 +257,12 @@ func main() {
 		log.Println("Matched: " + match.Request.URL)
 
 		for i := 0; i < len(match.Response.Headers); i++ {
-			if contains([]string{"accept-ranges", "content-type", "vary"}, match.Response.Headers[i].Name) {
+			if contains([]string{"accept-ranges", "content-type", "vary"}, strings.ToLower(match.Response.Headers[i].Name)) {
 				w.Header().Set(match.Response.Headers[i].Name, match.Response.Headers[i].Value)
 			}
 		}
+		
+		// fmt.Printf("%+v\n", w)
 
 		content := match.Response.Content.Text
 		if match.Response.Content.Encoding == "base64" {
