@@ -132,7 +132,8 @@ const downloadHar = () => {
     var url = URL.createObjectURL(blob);
     chrome.downloads.download({
       url: url,
-      filename: "myhar.har"
+      filename: "archive.har",
+      saveAs: true,
     });
   });
   // chrome.devtools.network.getHAR(
