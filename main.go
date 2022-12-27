@@ -126,26 +126,12 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+type LoadHARRequest struct {
+	Filename string `json:"filename"`
+}
+
+
 func main() {
-	// see: https://tutorialedge.net/golang/parsing-json-with-golang/
-	jsonFile, _ := os.Open("myhar.har")
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	var metaLog MetaLog
-	json.Unmarshal(byteValue, &metaLog)
-	var harLog = metaLog.HARLog
-
-	parsedBase, _ := url.Parse(harLog.Pages[0].Title)
-	baseUrl := fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
-	log.Println("Base URL: " + baseUrl)
-
-	var harMap = make(map[string]Entry)
-
-	for i := 0; i < len(harLog.Entries); i++ {
-		log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
-		harMap[harLog.Entries[i].Request.URL] = harLog.Entries[i]
-	}
-
 	matchRequest := func(harMap map[string]Entry, url string) (Entry, bool) {
 		// basic method: match only on full strings
 		val, found := harMap[url]
@@ -158,6 +144,58 @@ func main() {
 			}
 		}
 		return val, found
+	}
+
+	var harMap map[string]Entry
+
+	loadHar := func(filename string) map[string]Entry {
+		var harMap = make(map[string]Entry)
+
+		// see: https://tutorialedge.net/golang/parsing-json-with-golang/
+		jsonFile, _ := os.Open(filename)
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		var metaLog MetaLog
+		json.Unmarshal(byteValue, &metaLog)
+		var harLog = metaLog.HARLog
+
+		parsedBase, _ := url.Parse(harLog.Pages[0].Title)
+		baseUrl := fmt.Sprintf("%s://%s", parsedBase.Scheme, parsedBase.Hostname())
+		log.Println("Base URL: " + baseUrl)
+
+		for i := 0; i < len(harLog.Entries); i++ {
+			log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
+			harMap[harLog.Entries[i].Request.URL] = harLog.Entries[i]
+		}
+		return harMap
+	}
+
+	harMap = loadHar("myhar.har")
+	
+	loadHARHandler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+	
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
+		}
+	
+		var req LoadHARRequest
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			http.Error(w, "Error parsing JSON request body", http.StatusBadRequest)
+			return
+		}
+	
+		fmt.Println("loading: " + req.Filename)
+		harMap = loadHar(req.Filename)
+	
+		w.Write([]byte("OK"))
 	}
 
 	// see: https://www.wolfe.id.au/2020/03/10/starting-a-go-project/
@@ -236,6 +274,7 @@ func main() {
 		io.WriteString(w, content)
 	}
 
+	http.HandleFunc("/loadHAR", loadHARHandler)
 	http.HandleFunc("/", helloHandler)
 	log.Println("Listing for requests at http://localhost:8000/")
 	log.Fatal(http.ListenAndServe(":8000", nil))

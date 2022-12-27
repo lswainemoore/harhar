@@ -82,17 +82,45 @@ chrome.devtools.panels.create(
   function(panel) {
     console.log("panel created");
     panel.onShown.addListener(function (panelWindow) {
+
+      const toggleDisabled = (id, disabled) => {
+        panelWindow.document.querySelector(`#${id}`).disabled = disabled; 
+      }
+
       // seems to be important to add listener here:
       // see: https://stackoverflow.com/questions/11624307/how-to-modify-content-under-a-devtools-panel-in-a-chrome-extension
-      panelWindow.document.querySelector('#start').addEventListener('click', (event) => {
-        event.target.disabled = true;
-        panelWindow.document.querySelector('#stop').disabled = false;
+      panelWindow.document.querySelector('#start').addEventListener('click', () => {
+        toggleDisabled('start', true);
+        toggleDisabled('stop', false);
         startRewriting()
       });
-      panelWindow.document.querySelector('#stop').addEventListener('click', (event) => {
-        event.target.disabled = true;
-        panelWindow.document.querySelector('#start').disabled = false;  
+      panelWindow.document.querySelector('#stop').addEventListener('click', () => {
+        toggleDisabled('start', false);
+        toggleDisabled('stop', true);
         stopRewriting();
+      });
+      panelWindow.document.querySelector('#load').addEventListener('change', function(event) {
+        stopRewriting();
+        toggleDisabled('start', true);
+        toggleDisabled('stop', true);
+        const filename = event.target.files[0];
+        console.log('filename: ', filename);
+        fetch('http://localhost:8000/loadHAR', {
+          method: 'POST',
+          body: JSON.stringify({filename: filename.name}),
+        })
+          .then(response => {
+            if (response.ok) {
+              console.log('success loading file');
+              toggleDisabled('start', false);
+            }
+            else {
+              throw new Error();
+            }
+          })
+          .catch((error) => {
+            console.error('error loading file:', error);
+          });
       });
     });
   }
