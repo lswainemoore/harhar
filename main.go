@@ -128,7 +128,7 @@ func contains(s []string, e string) bool {
 
 func main() {
 	// see: https://tutorialedge.net/golang/parsing-json-with-golang/
-	jsonFile, _ := os.Open("mything.har")
+	jsonFile, _ := os.Open("myhar.har")
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 
 	var metaLog MetaLog
@@ -193,16 +193,15 @@ func main() {
 				refererUrl, _ := url.Parse(referer)
 				origin = refererUrl.Query().Get("rewritten_from")
 
-				// log.Println("using referer to determine origin: " + origin)
-				// // if we still dunno, do as below
-				// if origin == "WEDUNNO" {
-				// 	origin = baseUrl
-				// }
-				
+				// redirect with a new rewritten_from with our determined origin
+				// (this is important so that future requests can figure out replacement
+				// for WEDUNNO in the same way we did here)
+				http.Redirect(w, req, uri + string(splittened[0][len(splittened[0])-1]) + "rewritten_from=" + origin, http.StatusMovedPermanently)
+				return
 			} else {
 				// when it doesn't, we'll use our main page's one from HAR
 				// (TODO this will change if we support multiple pages)
-				origin = baseUrl
+				// origin = baseUrl
 			}
 		}
 
