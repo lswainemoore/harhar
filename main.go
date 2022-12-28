@@ -130,27 +130,51 @@ type LoadHARRequest struct {
 	Filename string `json:"filename"`
 }
 
+type HARMapKey struct {
+	URL string
+	Method string
+}
+
 
 func main() {
-	matchRequest := func(harMap map[string]Entry, url string) (Entry, bool) {
+	matchRequest := func(harMap map[HARMapKey][]Entry, url string, r *http.Request) (Entry, bool) {
 		// basic method: match only on full strings
-		val, found := harMap[url]
+		val, found := harMap[HARMapKey{url, r.Method}]
 
 		if !found {
 			// try upgrading to https
 			if strings.HasPrefix(url, "http://") {
 				url = strings.Replace(url, "http://", "https://", 1)
-				val, found = harMap[url]
+				val, found = harMap[HARMapKey{url, r.Method}]
 			}
 		}
-		return val, found
+		if !found {
+			return Entry{}, false
+		}
+
+		// TODO probably don't want to just use first with content
+		// maybe something having to do with page?
+		if r.Method == "GET" {
+			for i := 0; i < len(val); i++ {
+				if len(val[i].Response.Content.Text) > 0 {
+					return val[i], true
+				}
+			}
+			return val[0], true
+		} else if r.Method == "POST" {
+			fmt.Printf("POST request matching...: %+v\n %+v\n", r, val)
+			return val[0], found
+			// TODO match body data
+		} else {
+			return val[0], false
+		}
 	}
 
-	var harMap map[string]Entry
+	var harMap map[HARMapKey][]Entry
 	var harLog HARLog
 
-	loadHar := func(filename string) map[string]Entry {
-		var harMap = make(map[string]Entry)
+	loadHar := func(filename string) map[HARMapKey][]Entry {
+		var harMap = make(map[HARMapKey][]Entry)
 
 		// see: https://tutorialedge.net/golang/parsing-json-with-golang/
 		jsonFile, _ := os.Open("hars/" + filename)
@@ -160,10 +184,17 @@ func main() {
 		json.Unmarshal(byteValue, &metaLog)
 		harLog = metaLog.HARLog
 
+		// fill out the harMap, creating and/or appending current entry to it's key's slice
 		for i := 0; i < len(harLog.Entries); i++ {
 			log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
-			harMap[harLog.Entries[i].Request.URL] = harLog.Entries[i]
+			key := HARMapKey{harLog.Entries[i].Request.URL, harLog.Entries[i].Request.Method}
+			harMap[key] = append(harMap[key], harLog.Entries[i])
 		}
+		
+		// for i := 0; i < len(harLog.Entries); i++ {
+		// 	log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
+		// 	harMap[HARMapKey{harLog.Entries[i].Request.URL, harLog.Entries[i].Request.method}] = harLog.Entries[i]
+		// }
 		return harMap
 	}
 
@@ -259,7 +290,7 @@ func main() {
 
 		log.Println("seeking url: " + fullUrl)
 
-		match, found := matchRequest(harMap, fullUrl)
+		match, found := matchRequest(harMap, fullUrl, req)
 		if !found {
 			log.Println("No match found for: " + fullUrl)
 			fmt.Printf("%+v\n", req)
@@ -269,10 +300,13 @@ func main() {
 		log.Println("Matched: " + match.Request.URL)
 
 		for i := 0; i < len(match.Response.Headers); i++ {
-			if contains([]string{"accept-ranges", "content-type", "vary"}, strings.ToLower(match.Response.Headers[i].Name)) {
+			if contains([]string{"accept-ranges", "content-type", "vary", "location", "set-cookie"}, strings.ToLower(match.Response.Headers[i].Name)) {
 				w.Header().Set(match.Response.Headers[i].Name, match.Response.Headers[i].Value)
 			}
 		}
+
+		// set the status code of response to be that of match
+		w.WriteHeader(match.Response.Status)
 		
 		// fmt.Printf("%+v\n", w)
 
