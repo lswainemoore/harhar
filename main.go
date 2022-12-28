@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"os"
 	"strings"
 )
@@ -136,37 +137,79 @@ type HARMapKey struct {
 }
 
 
+func filter(entries []Entry, fn func(Entry) bool) []Entry {
+	vsf := make([]Entry, 0)
+	for _, v := range entries {
+		if fn(v) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
+
 func main() {
 	matchRequest := func(harMap map[HARMapKey][]Entry, url string, r *http.Request) (Entry, bool) {
 		// basic method: match only on full strings
-		val, found := harMap[HARMapKey{url, r.Method}]
+		entries, found := harMap[HARMapKey{url, r.Method}]
 
 		if !found {
 			// try upgrading to https
 			if strings.HasPrefix(url, "http://") {
 				url = strings.Replace(url, "http://", "https://", 1)
-				val, found = harMap[HARMapKey{url, r.Method}]
+				entries, found = harMap[HARMapKey{url, r.Method}]
 			}
 		}
 		if !found {
 			return Entry{}, false
 		}
 
+		// try to filter to matching cookies, but for now let's not be strict about it
+		// (both in terms of counting what counts a matching set of cookies, 
+		// and how we behave when there's no match)
+		cookiesMatch := func(entry Entry) bool {
+			// this is ignoring domains and paths and such,
+			// so it's a little loose-y goose-y
+			entryCookies := make(map[string]string)
+			reqCookies := make(map[string]string) 
+			for _, cookie := range entry.Request.Cookies {
+				entryCookies[cookie.Name] = cookie.Value
+			}
+			for _, cookie := range r.Cookies() {
+				reqCookies[cookie.Name] = cookie.Value
+			}
+			// fmt.Printf("entry cookies: %v, req cookies: %v", entryCookies, reqCookies)
+			return reflect.DeepEqual(entryCookies, reqCookies)
+		}
+		withMatchingCookies := filter(entries, cookiesMatch)
+		if len(withMatchingCookies) > 0 {
+			log.Printf(
+				"Found %d entries with matching cookies for %s: %v, %v", 
+				len(withMatchingCookies),
+				url,
+				r.Cookies(),
+				withMatchingCookies[0].Request.Cookies,
+			)
+			entries = withMatchingCookies
+		} else {
+			log.Printf("No entries with matching cookies for %s: %v (but proceeding anyway)", url, r.Cookies())
+		}
+
 		// TODO probably don't want to just use first with content
 		// maybe something having to do with page?
 		if r.Method == "GET" {
-			for i := 0; i < len(val); i++ {
-				if len(val[i].Response.Content.Text) > 0 {
-					return val[i], true
+			for i := 0; i < len(entries); i++ {
+				if len(entries[i].Response.Content.Text) > 0 {
+					return entries[i], true
 				}
 			}
-			return val[0], true
+			return entries[0], true
 		} else if r.Method == "POST" {
-			fmt.Printf("POST request matching...: %+v\n %+v\n", r, val)
-			return val[0], found
+			fmt.Printf("POST request matching...: %+v\n %+v\n", r, entries)
+			return entries[0], found
 			// TODO match body data
 		} else {
-			return val[0], false
+			return entries[0], false
 		}
 	}
 
