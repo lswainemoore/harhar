@@ -197,6 +197,16 @@ func main() {
 
 		// TODO probably don't want to just use first with content
 		// maybe something having to do with page?
+		// it's pretty hard to manage though. imagine a login/logout sequence:
+		// 1) user hits / with no cookie, get cookie-less view
+		// 2) user POSTs to /login with data, gets 302 to / with user=blah (plus session) cookie
+		// 3) user hits / with user=blah cookie, get user-specific view
+		// 4) user hits /logout, gets 302 to / (and server registers the logout for session)
+		// 5) user hits / still with cookie, get cookie-less view, and user= cookie back
+		// how do you distinguish between 3 and 5? both involve a GET to / with a cookie.
+		// presumably you try to use the order of requests, but that's pretty tricky with an async server,
+		// and with all the other requests flying around.
+		// for an example of this, see the login/logout behavior of Hacker News
 		if r.Method == "GET" {
 			for i := 0; i < len(entries); i++ {
 				if len(entries[i].Response.Content.Text) > 0 {
