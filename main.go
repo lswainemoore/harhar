@@ -9,8 +9,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
 	"os"
+	"reflect"
 	"strings"
 )
 
@@ -100,13 +100,13 @@ type Cookie struct {
 }
 
 type PostData struct {
-	MimeType string `json:"mimeType"`
-	Text    string `json:"text"`
-	Params []Param `json:"params"`
+	MimeType string  `json:"mimeType"`
+	Text     string  `json:"text"`
+	Params   []Param `json:"params"`
 }
 
 type Param struct {
-	Name string `json:"name"`
+	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
@@ -144,10 +144,9 @@ type LoadHARRequest struct {
 }
 
 type HARMapKey struct {
-	URL string
+	URL    string
 	Method string
 }
-
 
 func filter(entries []Entry, fn func(Entry) bool) []Entry {
 	vsf := make([]Entry, 0)
@@ -158,7 +157,6 @@ func filter(entries []Entry, fn func(Entry) bool) []Entry {
 	}
 	return vsf
 }
-
 
 func main() {
 	matchRequest := func(harMap map[HARMapKey][]Entry, url string, r *http.Request) (Entry, bool) {
@@ -177,13 +175,13 @@ func main() {
 		}
 
 		// try to filter to matching cookies, but for now let's not be strict about it
-		// (both in terms of counting what counts a matching set of cookies, 
+		// (both in terms of counting what counts a matching set of cookies,
 		// and how we behave when there's no match)
 		cookiesMatch := func(entry Entry) bool {
 			// this is ignoring domains and paths and such,
 			// so it's a little loose-y goose-y
 			entryCookies := make(map[string]string)
-			reqCookies := make(map[string]string) 
+			reqCookies := make(map[string]string)
 			for _, cookie := range entry.Request.Cookies {
 				entryCookies[cookie.Name] = cookie.Value
 			}
@@ -196,7 +194,7 @@ func main() {
 		withMatchingCookies := filter(entries, cookiesMatch)
 		if len(withMatchingCookies) > 0 {
 			log.Printf(
-				"Found %d entries with matching cookies for %s: %v, %v", 
+				"Found %d entries with matching cookies for %s: %v, %v",
 				len(withMatchingCookies),
 				url,
 				r.Cookies(),
@@ -228,7 +226,7 @@ func main() {
 			return entries[0], true
 		} else if r.Method == "POST" {
 			fmt.Printf("POST request matching...: %+v\n %+v\n", r, entries)
-			
+
 			// read data of request and filter entries to those with matching body
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -280,7 +278,7 @@ func main() {
 			key := HARMapKey{harLog.Entries[i].Request.URL, harLog.Entries[i].Request.Method}
 			harMap[key] = append(harMap[key], harLog.Entries[i])
 		}
-		
+
 		// for i := 0; i < len(harLog.Entries); i++ {
 		// 	log.Println("Entry Request URL: " + harLog.Entries[i].Request.URL)
 		// 	harMap[HARMapKey{harLog.Entries[i].Request.URL, harLog.Entries[i].Request.method}] = harLog.Entries[i]
@@ -289,30 +287,30 @@ func main() {
 	}
 
 	// harMap = loadHar("archive.har")
-	
+
 	loadHARHandler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-	
+
 		defer r.Body.Close()
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Error reading request body", http.StatusBadRequest)
 			return
 		}
-	
+
 		var req LoadHARRequest
 		err = json.Unmarshal(body, &req)
 		if err != nil {
 			http.Error(w, "Error parsing JSON request body", http.StatusBadRequest)
 			return
 		}
-	
+
 		fmt.Println("loading: " + req.Filename)
 		harMap = loadHar(req.Filename)
-	
+
 		w.Write([]byte("OK"))
 	}
 
@@ -358,15 +356,15 @@ func main() {
 
 				// redirect with a new rewritten_from with our determined origin
 				// (this is important so that future requests can figure out replacement
-				// for WEDUNNO in the same way we did here)	
+				// for WEDUNNO in the same way we did here)
 				if origin != "" && origin != "WEDUNNO" {
-					http.Redirect(w, req, uri + string(splittened[0][len(splittened[0])-1]) + "rewritten_from=" + origin, http.StatusMovedPermanently)
+					http.Redirect(w, req, uri+string(splittened[0][len(splittened[0])-1])+"rewritten_from="+origin, http.StatusMovedPermanently)
 					return
 				} else {
 					log.Println("No origin found in referer: " + referer)
 				}
-			} 
-			
+			}
+
 			// if we still don't have an origin, we'll use the base URL from the HAR
 			if origin == "WEDUNNO" || origin == "" {
 				// when it doesn't, we'll use our main page's one from HAR
