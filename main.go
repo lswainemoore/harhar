@@ -76,6 +76,7 @@ type Request struct {
 	Cookies     []Cookie      `json:"cookies"`
 	HeaderSize  int           `json:"headerSize"`
 	BodySize    int           `json:"bodySize"`
+	PostData    PostData      `json:"postData"`
 }
 
 type Header struct {
@@ -96,6 +97,17 @@ type Cookie struct {
 	Expires  string `json:"expires"`
 	HTTPOnly bool   `json:"httpOnly"`
 	Secure   bool   `json:"secure"`
+}
+
+type PostData struct {
+	MimeType string `json:"mimeType"`
+	Text    string `json:"text"`
+	Params []Param `json:"params"`
+}
+
+type Param struct {
+	Name string `json:"name"`
+	Value string `json:"value"`
 }
 
 type Response struct {
@@ -216,8 +228,33 @@ func main() {
 			return entries[0], true
 		} else if r.Method == "POST" {
 			fmt.Printf("POST request matching...: %+v\n %+v\n", r, entries)
+			
+			// read data of request and filter entries to those with matching body
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.Printf("Error reading request body: %v", err)
+				return Entry{}, false
+			}
+			bodyString := string(body)
+
+			bodyMatch := func(entry Entry) bool {
+				return entry.Request.PostData.Text == bodyString
+			}
+			withMatchingBody := filter(entries, bodyMatch)
+			if len(withMatchingBody) > 0 {
+				log.Printf(
+					"Found %d entries with matching body for %s: %v, %v",
+					len(withMatchingBody),
+					url,
+					bodyString,
+					withMatchingBody[0].Request.PostData.Text,
+				)
+				entries = withMatchingBody
+			} else {
+				log.Printf("No entries with matching body for %s: %v", url, bodyString)
+				return Entry{}, false
+			}
 			return entries[0], found
-			// TODO match body data
 		} else {
 			return entries[0], false
 		}
@@ -358,10 +395,15 @@ func main() {
 			}
 		}
 
+		// preventing CORS issues, we hope...
+		w.Header().Set("Access-Control-Allow-Methods", "POST GET OPTIONS PUT DELETE")
+		// pretty weird, bc it seems to produce null value in browser, but * blocks credentials
+		// and setting to "" explictly produces the CORS error we're trying to avoid
+		w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("origin"))
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
 		// set the status code of response to be that of match
 		w.WriteHeader(match.Response.Status)
-		
-		// fmt.Printf("%+v\n", w)
 
 		content := match.Response.Content.Text
 		if match.Response.Content.Encoding == "base64" {
